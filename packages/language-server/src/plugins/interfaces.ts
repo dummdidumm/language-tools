@@ -15,6 +15,7 @@ import {
     SymbolInformation,
     TextDocumentIdentifier,
     TextEdit,
+    WorkspaceEdit,
 } from 'vscode-languageserver-types';
 import { Document } from '../lib/documents';
 
@@ -85,6 +86,14 @@ export interface CodeActionsProvider {
     ): Resolvable<CodeAction[]>;
 }
 
+export interface RenameProvider {
+    rename(
+        document: Document,
+        position: Position,
+        newName: string,
+    ): Resolvable<WorkspaceEdit | null>;
+}
+
 export interface OnWatchFileChanges {
     onWatchFileChanges(fileName: string, changeType: FileChangeType): void;
 }
@@ -98,6 +107,7 @@ export type LSProvider = DiagnosticsProvider &
     ColorPresentationsProvider &
     DocumentSymbolsProvider &
     DefinitionsProvider &
-    CodeActionsProvider;
+    CodeActionsProvider &
+    RenameProvider;
 
 export type Plugin = Partial<LSProvider & OnWatchFileChanges>;

@@ -15,6 +15,7 @@ import {
     TextDocumentEdit,
     TextEdit,
     VersionedTextDocumentIdentifier,
+    WorkspaceEdit,
 } from 'vscode-languageserver';
 import {
     Document,
@@ -23,6 +24,7 @@ import {
     mapHoverToParent,
     mapRangeToOriginal,
     mapSymbolInformationToOriginal,
+    offsetAt,
 } from '../../lib/documents';
 import { LSConfigManager, LSTypescriptConfig } from '../../ls-config';
 import { pathToUrl } from '../../utils';
@@ -36,6 +38,7 @@ import {
     DocumentSymbolsProvider,
     HoverProvider,
     OnWatchFileChanges,
+    RenameProvider,
 } from '../interfaces';
 import { DocumentSnapshot, SnapshotFragment } from './DocumentSnapshot';
 import {
@@ -49,6 +52,7 @@ import {
     getScriptKindFromFileName,
     mapSeverity,
     symbolKindFromString,
+    isSvelteFilePath,
 } from './utils';
 
 export class TypeScriptPlugin
@@ -58,6 +62,7 @@ export class TypeScriptPlugin
         DocumentSymbolsProvider,
         DefinitionsProvider,
         CodeActionsProvider,
+        RenameProvider,
         OnWatchFileChanges,
         CompletionsProvider<CompletionEntryWithIdentifer> {
     private configManager: LSConfigManager;
@@ -244,6 +249,55 @@ export class TypeScriptPlugin
                 );
             }),
         );
+    }
+
+    async rename(
+        document: Document,
+        position: Position,
+        newName: string,
+    ): Promise<WorkspaceEdit | null> {
+        const { lang, tsDoc } = this.getLSAndTSDoc(document);
+        const fragment = await tsDoc.getFragment();
+
+        const renameLocations = lang.findRenameLocations(
+            tsDoc.filePath,
+            fragment.offsetAt(fragment.getGeneratedPosition(position)),
+            true,
+            false,
+        );
+        if (!renameLocations) {
+            return null;
+        }
+
+        const docs = new Map<string, SnapshotFragment>([[tsDoc.filePath, fragment]]);
+        const convertedRenameLocations = await Promise.all(
+            renameLocations.map(async (loc) => {
+                let doc = docs.get(loc.fileName);
+                if (!doc) {
+                    doc = await this.getSnapshot(loc.fileName).getFragment();
+                    docs.set(loc.fileName, doc);
+                }
+
+                return {
+                    ...loc,
+                    range: mapRangeToOriginal(doc, convertRange(doc, loc.textSpan)),
+                };
+            }),
+        );
+
+        return convertedRenameLocations
+            .filter((loc) => loc.range.start.line >= 0 && loc.range.end.line >= 0)
+            .reduce(
+                (acc, loc) => {
+                    const uri = pathToUrl(loc.fileName);
+                    if (!acc.changes[uri]) {
+                        acc.changes[uri] = [];
+                    }
+                    acc.changes[uri].push({ newText: newName, range: loc.range });
+                    return acc;
+                },
+                <Required<Pick<WorkspaceEdit, 'changes'>>>{ changes: {} },
+            );
     }
 
     async getCodeActions(

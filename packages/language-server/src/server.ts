@@ -114,9 +114,14 @@ export function startServer(options?: LSOptions) {
                 documentSymbolProvider: true,
                 definitionProvider: true,
                 codeActionProvider: true,
+                renameProvider: true,
             },
         };
     });
+
+    connection.onRenameRequest((req) =>
+        pluginHost.rename(req.textDocument, req.position, req.newName),
+    );
 
     connection.onDidChangeConfiguration(({ settings }) => {
         pluginHost.updateConfig(settings.svelte?.plugin);

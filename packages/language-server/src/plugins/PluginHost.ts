@@ -17,6 +17,7 @@ import {
     FileChangeType,
     CompletionItem,
     CompletionContext,
+    WorkspaceEdit,
 } from 'vscode-languageserver';
 import { LSConfig, LSConfigManager } from '../ls-config';
 import { DocumentManager } from '../lib/documents';
@@ -219,6 +220,23 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
                 [document, range, context],
                 ExecuteMode.Collect,
             ),
+        );
+    }
+
+    async rename(
+        textDocument: TextDocumentIdentifier,
+        position: Position,
+        newName: string,
+    ): Promise<WorkspaceEdit | null> {
+        const document = this.getDocument(textDocument.uri);
+        if (!document) {
+            throw new Error('Cannot call methods on an unopened document');
+        }
+
+        return await this.execute<any>(
+            'rename',
+            [document, position, newName],
+            ExecuteMode.FirstNonNull,
         );
     }
 
