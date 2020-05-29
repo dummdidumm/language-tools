@@ -264,6 +264,7 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
         mode: ExecuteMode,
     ): Promise<(T | null) | T[] | void> {
         const plugins = this.plugins.filter((plugin) => typeof plugin[name] === 'function');
+        console.log('PluginHost:execute:starting for', name);
 
         switch (mode) {
             case ExecuteMode.FirstNonNull:
@@ -288,7 +289,18 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
 
     private async tryExecutePlugin(plugin: any, fnName: string, args: any[], failValue: any) {
         try {
-            return await plugin[fnName](...args);
+            console.log(
+                'PluginHost:execute:tryExecutePlugin:invoke',
+                plugin.constructor.name,
+                fnName,
+            );
+            const res = await plugin[fnName](...args);
+            console.log(
+                'PluginHost:execute:tryExecutePlugin:success',
+                plugin.constructor.name,
+                fnName,
+            );
+            return res;
         } catch (e) {
             Logger.error(e);
             return failValue;

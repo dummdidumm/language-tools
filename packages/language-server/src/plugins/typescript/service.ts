@@ -38,11 +38,14 @@ export function getLanguageServiceForDocument(
 
 export function getService(path: string, createDocument: CreateDocument) {
     const tsconfigPath = findTsConfigPath(path);
+    console.log('service:getService:getting server for path:', tsconfigPath);
 
     let service: LanguageServiceContainer;
     if (services.has(tsconfigPath)) {
+        console.log('service:getService:exists');
         service = services.get(tsconfigPath)!;
     } else {
+        console.log('service:getService:creating');
         service = createLanguageService(tsconfigPath, createDocument);
         services.set(tsconfigPath, service);
     }
@@ -67,6 +70,19 @@ export function createLanguageService(
         ts.sys.resolvePath(resolve(svelteTsPath, f)),
     );
 
+    console.log(
+        'service:createLanguageService:\n',
+        'workspacePath:',
+        workspacePath,
+        '\nsveltePkgInfo',
+        JSON.stringify(sveltePkgInfo, null, 3),
+        '\ncompilerOptions',
+        JSON.stringify(compilerOptions, null, 3),
+        '\nfiles',
+        JSON.stringify(files, null, 3),
+        '\n============',
+    );
+
     const host: ts.LanguageServiceHost = {
         getCompilationSettings: () => compilerOptions,
         getScriptFileNames: () =>
@@ -80,6 +96,7 @@ export function createLanguageService(
             if (doc) {
                 return doc;
             }
+            console.log('service:wants snapshot for', fileName);
 
             return ts.ScriptSnapshot.fromString(this.readFile!(fileName) || '');
         },
@@ -140,13 +157,22 @@ export function createLanguageService(
     function getSvelteSnapshot(fileName: string): DocumentSnapshot | undefined {
         fileName = ensureRealSvelteFilePath(fileName);
 
-        if (!isSvelteFilePath(fileName)) {
-            return;
-        }
+        // old - comment in if no longer reproducible
+        // if (!isSvelteFilePath(fileName)) {
+        //     return;
+        // }
         let doc = snapshotManager.get(fileName);
         if (doc) {
             return doc;
         }
+
+        // start new - comment out if no longer reproducible
+        if (!isSvelteFilePath(fileName)) {
+            doc = DocumentSnapshot.fromFilePath(fileName);
+            snapshotManager.set(fileName, doc);
+            return doc;
+        }
+        // end new
 
         const file = ts.sys.readFile(fileName) || '';
         doc = DocumentSnapshot.fromDocument(createDocument(fileName, file));

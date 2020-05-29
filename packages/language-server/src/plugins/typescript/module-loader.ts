@@ -79,7 +79,7 @@ export function createSvelteModuleLoader(
         moduleNames: string[],
         containingFile: string,
     ): (ts.ResolvedModule | undefined)[] {
-        return moduleNames.map((moduleName) => {
+        const result = moduleNames.map((moduleName) => {
             const cachedModule = moduleCache.get(moduleName, containingFile);
             if (cachedModule) {
                 return cachedModule;
@@ -89,6 +89,16 @@ export function createSvelteModuleLoader(
             moduleCache.set(moduleName, containingFile, resolvedModule);
             return resolvedModule;
         });
+        console.log(
+            'module-load:resolveModuleNames:',
+            '\ncontainingFile:',
+            containingFile,
+            '\nmoduleNames:',
+            JSON.stringify(moduleNames, null, 3),
+            // '\nresult:',
+            // JSON.stringify(result, null, 3),
+        );
+        return result;
     }
 
     function resolveModuleName(

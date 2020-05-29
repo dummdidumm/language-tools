@@ -17,8 +17,10 @@ export class SnapshotManager {
     private documents: Map<string, DocumentSnapshot> = new Map();
 
     set(fileName: string, snapshot: DocumentSnapshot) {
+        console.log('SnapshostManager:set', fileName);
         const prev = this.get(fileName);
         if (prev) {
+            console.log('SnapshostManager:set has previous');
             prev.destroyFragment();
         }
 

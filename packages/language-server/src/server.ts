@@ -137,22 +137,33 @@ export function startServer(options?: LSOptions) {
     connection.onDidChangeTextDocument((evt) =>
         docManager.updateDocument(evt.textDocument, evt.contentChanges),
     );
-    connection.onHover((evt) => pluginHost.doHover(evt.textDocument, evt.position));
+    connection.onHover((evt) => log('onHover', pluginHost.doHover(evt.textDocument, evt.position)));
     connection.onCompletion((evt) =>
-        pluginHost.getCompletions(evt.textDocument, evt.position, evt.context),
+        log('onCompletion', pluginHost.getCompletions(evt.textDocument, evt.position, evt.context)),
     );
-    connection.onDocumentFormatting((evt) => pluginHost.formatDocument(evt.textDocument));
+    connection.onDocumentFormatting((evt) =>
+        log('onDocumentFormatting', pluginHost.formatDocument(evt.textDocument)),
+    );
     connection.onRequest(TagCloseRequest.type, (evt) =>
-        pluginHost.doTagComplete(evt.textDocument, evt.position),
+        log('onRequest', pluginHost.doTagComplete(evt.textDocument, evt.position)),
     );
-    connection.onDocumentColor((evt) => pluginHost.getDocumentColors(evt.textDocument));
+    connection.onDocumentColor((evt) =>
+        log('onDocumentColor', pluginHost.getDocumentColors(evt.textDocument)),
+    );
     connection.onColorPresentation((evt) =>
-        pluginHost.getColorPresentations(evt.textDocument, evt.range, evt.color),
+        log(
+            'onColorPresentation',
+            pluginHost.getColorPresentations(evt.textDocument, evt.range, evt.color),
+        ),
     );
-    connection.onDocumentSymbol((evt) => pluginHost.getDocumentSymbols(evt.textDocument));
-    connection.onDefinition((evt) => pluginHost.getDefinitions(evt.textDocument, evt.position));
+    connection.onDocumentSymbol((evt) =>
+        log('onDocumentSymbol', pluginHost.getDocumentSymbols(evt.textDocument)),
+    );
+    connection.onDefinition((evt) =>
+        log('onDefinition', pluginHost.getDefinitions(evt.textDocument, evt.position)),
+    );
     connection.onCodeAction((evt) =>
-        pluginHost.getCodeActions(evt.textDocument, evt.range, evt.context),
+        log('onCodeAction', pluginHost.getCodeActions(evt.textDocument, evt.range, evt.context)),
     );
     connection.onCompletionResolve((completionItem) => {
         const data = (completionItem as AppCompletionItem).data as TextDocumentIdentifier;
@@ -167,6 +178,7 @@ export function startServer(options?: LSOptions) {
         for (const change of para.changes) {
             const filename = urlToPath(change.uri);
             if (filename) {
+                console.log('server:onDidChangeWatchedFiles', filename);
                 pluginHost.onWatchFileChanges(filename, change.type);
             }
         }
@@ -175,7 +187,10 @@ export function startServer(options?: LSOptions) {
     docManager.on(
         'documentChange',
         _.debounce(async (document: Document) => {
-            const diagnostics = await pluginHost.getDiagnostics({ uri: document.getURL() });
+            const diagnostics = await log(
+                'sendDiagnostics',
+                pluginHost.getDiagnostics({ uri: document.getURL() }),
+            );
             connection!.sendDiagnostics({
                 uri: document.getURL(),
                 diagnostics,
@@ -195,4 +210,9 @@ export function startServer(options?: LSOptions) {
     });
 
     connection.listen();
+}
+
+async function log(context: string, result: Promise<any>): Promise<any> {
+    console.log('server:returning from', context);
+    return result;
 }
